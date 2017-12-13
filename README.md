@@ -1,3 +1,12 @@
+# React TimeLog
+This is a simple, proof-of-concept React Native application that can be used to log cumulative time.
+
+## Usage
+* Press the 'Add' button to add new Task
+* For a Task, press 'Start' to start adding time, and 'Stop' to stop adding time.
+* Press 'Clear' to remove all tasks and their associative time logs.  Make sure you write it all down first!
+
+
 This project was bootstrapped with [Create React Native App](https://github.com/react-community/create-react-native-app).
 
 Below you'll find information about performing common tasks. The most recent version of this guide is available [here](https://github.com/react-community/create-react-native-app/blob/master/react-native-scripts/template/README.md).
