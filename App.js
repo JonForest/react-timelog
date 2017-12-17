@@ -1,11 +1,15 @@
 import React from 'react';
-import {StyleSheet, Text, TextInput, View, FlatList, Button} from 'react-native';
+import {StyleSheet, Text, TextInput, View, FlatList, Button, AppState, AsyncStorage } from 'react-native';
+
+const STORAGENAME = 'timelogItems'
 
 export default class App extends React.Component {
+
   constructor(props) {
     super(props);
     // todo: load the state from the local storage, whatever that is
     // todo: work out the state structure for this app
+
     this.state = {
      timelogItems: [
        {key: 'Work for Dennis', time: 4000, started: false}
@@ -14,8 +18,30 @@ export default class App extends React.Component {
 
     this.startTimer = this.startTimer.bind(this);
     this.stopTimer = this.stopTimer.bind(this);
+
+    AsyncStorage.getItem(STORAGENAME, (err, itemsString) => {
+      if (err) console.error(`Failed to load from memory: ${err}`)
+      console.log(itemsString);
+      if (itemsString) this.setState({timelogItems: JSON.parse(itemsString)})
+    });
   }
 
+  componentDidMount() {
+    this.storageTimer = setTimeout(() => {
+      AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems));
+    })
+  }
+
+  componentWillUnmount() {
+    console.log(unmounting)
+    AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems));
+    clearInterval(this.storageTimer);
+  }
+
+  // todo: app needs to be in the foreground for this to work
+  // look to https://github.com/ocetnik/react-native-background-timer
+  // Or, simply use a couple of Dates to cope for when the app is closed - events for app returning from sleep and
+  // comparing against the date
   startTimer(key) {
     // Set the started flag immediately
     const newRecords = this.state.timelogItems.map(item => {
@@ -44,6 +70,7 @@ export default class App extends React.Component {
     clearTimeout(record.timer);
     record.started = false;
     this.setState(JSON.parse(JSON.stringify(this.state)));
+    AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems))
   }
 
   render() {
