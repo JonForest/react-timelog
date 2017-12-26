@@ -20,6 +20,7 @@ export default class App extends React.Component {
     this.startTimer = this.startTimer.bind(this);
     this.stopTimer = this.stopTimer.bind(this);
     this.createNewRecord = this.createNewRecord.bind(this);
+    this.clearAll = this.clearAll.bind(this);
 
     AsyncStorage.getItem(STORAGENAME, (err, itemsString) => {
       if (err) console.error(`Failed to load from memory: ${err}`)
@@ -71,9 +72,10 @@ export default class App extends React.Component {
     const record = this.state.timelogItems.find(item => item.key === key);
     clearTimeout(record.timer);
     record.started = false;
-    this.setState(JSON.parse(JSON.stringify(this.state)));
-    console.log(this.state)
-    AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems))
+    this.setState(JSON.parse(JSON.stringify(this.state)), () => {
+      console.log(this.state)
+      AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems))
+    });
   }
 
   createNewRecord(description) {
@@ -81,20 +83,36 @@ export default class App extends React.Component {
     newState.timelogItems.push({
       key: description,
       time: 0
-    })
-    this.setState(newState)
+    });
+    this.setState(newState);
+  }
+
+  clearAll() {
+    this.setState({timelogItems: []}, () => {
+      console.log(this.state);
+      AsyncStorage.setItem(STORAGENAME, JSON.stringify([]));
+    });
   }
 
   render() {
+    const clearButton = this.state.timelogItems.length
+      ? <Button title="Clear" onPress={this.clearAll} />
+      : <Button title="Clear" onPress={this.clearAll} disabled />
+
+    const listOrText = this.state.timelogItems.length
+      ? <FlatList style={{padding: 5}}
+                  data={this.state.timelogItems}
+                  renderItem={({item}) => <TimeRecord record={item} startTimer={this.startTimer} stopTimer={this.stopTimer} />}
+        />
+      : <Text>No items logged</Text>
+
     return (
       <View>
         <Header centerComponent={{ text: 'Time Log', style: styles.title }}/>
         <NewRecord style={{height: 500}} createNewRecord={this.createNewRecord} />
         <Divider style={styles.divider} />
-        <FlatList style={{padding: 5}}
-          data={this.state.timelogItems}
-          renderItem={({item}) => <TimeRecord record={item} startTimer={this.startTimer} stopTimer={this.stopTimer} />}
-        />
+        {listOrText}
+        {clearButton}
       </View>
     );
   }
