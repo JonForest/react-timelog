@@ -1,5 +1,6 @@
 import React from 'react';
-import {StyleSheet, Text, TextInput, View, FlatList, Button, AppState, AsyncStorage } from 'react-native';
+import {StyleSheet, Text, TextInput, View, FlatList, AppState, AsyncStorage } from 'react-native';
+import { Header, FormLabel, FormInput, Button, Divider } from 'react-native-elements';
 
 const STORAGENAME = 'timelogItems'
 
@@ -18,6 +19,7 @@ export default class App extends React.Component {
 
     this.startTimer = this.startTimer.bind(this);
     this.stopTimer = this.stopTimer.bind(this);
+    this.createNewRecord = this.createNewRecord.bind(this);
 
     AsyncStorage.getItem(STORAGENAME, (err, itemsString) => {
       if (err) console.error(`Failed to load from memory: ${err}`)
@@ -33,7 +35,6 @@ export default class App extends React.Component {
   }
 
   componentWillUnmount() {
-    console.log(unmounting)
     AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems));
     clearInterval(this.storageTimer);
   }
@@ -53,6 +54,7 @@ export default class App extends React.Component {
     this.setState({timelogItems: newRecords});
 
     // todo: fix shadowed variables.  Maybe extract the map into a helper
+    // todo: error if stop within a second, but leave until the correct time handling code is in place
     let timer = setInterval(() => {
       const newRecords = this.state.timelogItems.map(item => {
         if (item.key === key) {
@@ -70,13 +72,26 @@ export default class App extends React.Component {
     clearTimeout(record.timer);
     record.started = false;
     this.setState(JSON.parse(JSON.stringify(this.state)));
+    console.log(this.state)
     AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems))
+  }
+
+  createNewRecord(description) {
+    const newState = JSON.parse(JSON.stringify(this.state));
+    newState.timelogItems.push({
+      key: description,
+      time: 0
+    })
+    this.setState(newState)
   }
 
   render() {
     return (
-      <View style={{padding: 50}}>
-        <FlatList
+      <View>
+        <Header centerComponent={{ text: 'Time Log', style: styles.title }}/>
+        <NewRecord style={{height: 500}} createNewRecord={this.createNewRecord} />
+        <Divider style={styles.divider} />
+        <FlatList style={{padding: 5}}
           data={this.state.timelogItems}
           renderItem={({item}) => <TimeRecord record={item} startTimer={this.startTimer} stopTimer={this.stopTimer} />}
         />
@@ -113,15 +128,14 @@ class TimeRecord extends React.Component {
   }
 
   stop() {
-    console.log('stop')
     this.props.stopTimer(this.props.record.key);
   }
 
   render() {
     console.log('render called' + this.props.record.time);
     const button = this.props.record.started
-      ? <Button title="Stop" onPress={this.stop} style={{flex:1}} />
-      : <Button title="Start" onPress={this.start} style={{flex:1}} />
+      ? <Button small title="Stop" onPress={this.stop} style={{flex:1}} />
+      : <Button small title="Start" onPress={this.start} style={{flex:1}} />
     const formattedTime = this.getTime(this.props.record.time);
     console.log(formattedTime)
 
@@ -135,11 +149,54 @@ class TimeRecord extends React.Component {
   }
 }
 
+class NewRecord extends React.Component {
+  description;
+
+  constructor(props) {
+    super(props);
+    this.setDescription = this.setDescription.bind(this);
+    this.sendNewRecord = this.sendNewRecord.bind(this);
+  }
+
+  setDescription(description) {
+    console.log(description);
+    this.description = description;
+  }
+
+  sendNewRecord () {
+    this.props.createNewRecord(this.description);
+    this.description = '';
+  }
+
+  render() {
+    return (
+      <View style={{flexDirection: 'column'}} >
+        <FormLabel>Name</FormLabel>
+        <FormInput onChangeText={this.setDescription} />
+        <Button
+          small
+          title="Create"
+          onPress={this.sendNewRecord} />
+      </View>
+    )
+  }
+}
+
 const styles = StyleSheet.create({
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff'
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  divider: {
+    marginTop: 5,
+    marginBottom: 5,
+    backgroundColor: 'blue'
+  }
 });
