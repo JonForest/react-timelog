@@ -13,7 +13,7 @@ export default class App extends React.Component {
 
     this.state = {
      timelogItems: [
-       {key: 'Work for Dennis', time: 4000, started: false}
+       {key: 'Work for Dennis', time: 0, displayTime: 0}
      ]
     }
 
@@ -30,9 +30,11 @@ export default class App extends React.Component {
   }
 
   componentDidMount() {
+    console.log('did mount');
+    // Save periodically, every 5 seconds in case of being unable to catch an 'off' event
     this.storageTimer = setTimeout(() => {
       AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems));
-    })
+    }, 5000)
   }
 
   componentWillUnmount() {
@@ -48,7 +50,9 @@ export default class App extends React.Component {
     // Set the started flag immediately
     const newRecords = this.state.timelogItems.map(item => {
       if (item.key === key) {
-        item.started = true;
+        item.startedTime = Date.now();
+        // Set up the display variable
+        item.displayTime = item.time;
       }
       return item
     })
@@ -59,7 +63,7 @@ export default class App extends React.Component {
     let timer = setInterval(() => {
       const newRecords = this.state.timelogItems.map(item => {
         if (item.key === key) {
-          item.time++;
+          item.displayTime++;
           item.timer = timer;
         }
         return item;
@@ -70,8 +74,18 @@ export default class App extends React.Component {
 
   stopTimer(key) {
     const record = this.state.timelogItems.find(item => item.key === key);
+    // Stop time out running
     clearTimeout(record.timer);
-    record.started = false;
+
+    // Work out how long the timer has been running for, update the time and clear the startedTime
+    const finishedTime = Date.now();
+    const totalTime = Math.floor((finishedTime - record.startedTime) / 1000);
+    record.time += totalTime;
+    record.displayTime = record.time;
+    record.startedTime = null;
+
+    // Set state, and also save to permanent storage
+    // TODO: move all setState commands to also save to storage
     this.setState(JSON.parse(JSON.stringify(this.state)), () => {
       console.log(this.state)
       AsyncStorage.setItem(STORAGENAME, JSON.stringify(this.state.timelogItems))
@@ -82,7 +96,8 @@ export default class App extends React.Component {
     const newState = JSON.parse(JSON.stringify(this.state));
     newState.timelogItems.push({
       key: description,
-      time: 0
+      time: 0,
+      displayTime: 0
     });
     this.setState(newState);
   }
@@ -150,12 +165,10 @@ class TimeRecord extends React.Component {
   }
 
   render() {
-    console.log('render called' + this.props.record.time);
-    const button = this.props.record.started
+    const button = this.props.record.startedTime
       ? <Button small title="Stop" onPress={this.stop} style={{flex:1}} />
       : <Button small title="Start" onPress={this.start} style={{flex:1}} />
-    const formattedTime = this.getTime(this.props.record.time);
-    console.log(formattedTime)
+    const formattedTime = this.getTime(this.props.record.displayTime);
 
     return (
       <View style={{flex: 0.5, flexDirection: 'row'}}>
@@ -168,33 +181,35 @@ class TimeRecord extends React.Component {
 }
 
 class NewRecord extends React.Component {
-  description;
+  input;
 
   constructor(props) {
     super(props);
     this.setDescription = this.setDescription.bind(this);
     this.sendNewRecord = this.sendNewRecord.bind(this);
-  }
-
-  setDescription(description) {
-    console.log(description);
-    this.description = description;
+    this.state = {description: null}
   }
 
   sendNewRecord () {
-    this.props.createNewRecord(this.description);
-    this.description = '';
+    this.props.createNewRecord(this.state.description);
+    this.input.clearText();
+    this.input.blur();
+    this.setState({description: null})
   }
 
   render() {
+    const button = this.state.description && this.state.description.length
+      ? <Button small title="Create" onPress={this.sendNewRecord} />
+      : <Button small title="Create" onPress={this.sendNewRecord} disabled />
+
     return (
       <View style={{flexDirection: 'column'}} >
         <FormLabel>Name</FormLabel>
-        <FormInput onChangeText={this.setDescription} />
-        <Button
-          small
-          title="Create"
-          onPress={this.sendNewRecord} />
+        <FormInput
+          onChangeText={(description) => this.setState({description})}
+          ref={ref => this.input = ref}
+        />
+        {button}
       </View>
     )
   }
