@@ -1,6 +1,8 @@
 import React from 'react';
-import {StyleSheet, Text, TextInput, View, FlatList, AppState, AsyncStorage } from 'react-native';
-import { Header, FormLabel, FormInput, Button, Divider } from 'react-native-elements';
+import {StyleSheet, Text, View, FlatList, AsyncStorage } from 'react-native';
+import { Header, Button, Divider } from 'react-native-elements';
+import TimeRecord from './components/time-record'
+import NewRecord from './components/new-record'
 
 const STORAGENAME = 'timelogItems'
 
@@ -51,15 +53,17 @@ export default class App extends React.Component {
     const newRecords = this.state.timelogItems.map(item => {
       if (item.key === key) {
         item.startedTime = Date.now();
-        // Set up the display variable
         item.displayTime = item.time;
       }
       return item
     })
     this.setState({timelogItems: newRecords});
 
-    // todo: fix shadowed variables.  Maybe extract the map into a helper
-    // todo: error if stop within a second, but leave until the correct time handling code is in place
+    // Start and run the timer for display purposes (to show 'counting')
+    this.runClock(key);
+  }
+
+  runClock (key) {
     let timer = setInterval(() => {
       const newRecords = this.state.timelogItems.map(item => {
         if (item.key === key) {
@@ -130,88 +134,6 @@ export default class App extends React.Component {
         {clearButton}
       </View>
     );
-  }
-}
-
-class TimeRecord extends React.Component {
-  constructor(props) {
-    super(props);
-    this.start = this.start.bind(this);
-    this.stop = this.stop.bind(this);
-    this.getTime = this.getTime.bind(this);
-  }
-
-  leftPadTime(digits) {
-    if (String(digits).length < 2) return '0' + digits;
-    return digits
-  }
-
-  getTime(totalSeconds) {
-    if (Number(totalSeconds) === 0) return '00:00:00';
-
-    const hours = Math.floor(totalSeconds / 3600);
-    const hoursRemainder = totalSeconds % 3600;
-    const minutes = this.leftPadTime(Math.floor(hoursRemainder / 60));
-    const seconds = this.leftPadTime(hoursRemainder % 60);
-    return `${hours}:${minutes}:${seconds}`;
-  }
-
-  start() {
-    this.props.startTimer(this.props.record.key);
-  }
-
-  stop() {
-    this.props.stopTimer(this.props.record.key);
-  }
-
-  render() {
-    const button = this.props.record.startedTime
-      ? <Button small title="Stop" onPress={this.stop} style={{flex:1}} />
-      : <Button small title="Start" onPress={this.start} style={{flex:1}} />
-    const formattedTime = this.getTime(this.props.record.displayTime);
-
-    return (
-      <View style={{flex: 0.5, flexDirection: 'row'}}>
-        <Text style={{flex: 1}}>{this.props.record.key}</Text>
-        <Text style={{flex: 1}}>{formattedTime}</Text>
-        {button}
-      </View>
-    );
-  }
-}
-
-class NewRecord extends React.Component {
-  input;
-
-  constructor(props) {
-    super(props);
-    this.setDescription = this.setDescription.bind(this);
-    this.sendNewRecord = this.sendNewRecord.bind(this);
-    this.state = {description: null}
-  }
-
-  sendNewRecord () {
-    this.props.createNewRecord(this.state.description);
-    this.input.clearText();
-    this.input.blur();
-    this.setState({description: null})
-  }
-
-  render() {
-    const button = this.state.description && this.state.description.length
-      ? <Button small title="Create" onPress={this.sendNewRecord} />
-      : <Button small title="Create" onPress={this.sendNewRecord} disabled />
-
-    return (
-      <View style={{flexDirection: 'column'}} >
-        <FormLabel>Name</FormLabel>
-        <FormInput
-          onChangeText={(description) => this.setState({description})}
-          ref={ref => this.input = ref}
-        />
-        {button}
-      </View>
-    )
   }
 }
 
